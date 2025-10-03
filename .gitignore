@@ -1,0 +1,20 @@
+# deps
+node_modules/
+
+# build outputs
+dist/
+htmlmarkdowner
+htmlmarkdowner.exe
+*.map
+
+# env
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# logs
+*.log
