@@ -5,21 +5,26 @@ A blazingly fast API server that converts HTML pages to clean Markdown format. B
 ## Features
 
 - ✨ Convert any static HTML/SSR page to Markdown
-- 🚀 Fast and efficient with Redis caching (1 hour TTL)
-- 🛡️ Rate limiting by IP (100 requests per 15 minutes)
-- 📄 Support for single page and multi-page crawling
+- 🚀 Fast and efficient with Redis caching
+- 🛡️ Rate limiting by IP (5 requests per minute)
 - 🎯 Clean article extraction using Mozilla Readability
+- 📚 Interactive API documentation with Scalar
 - 🐳 Docker-ready for easy deployment
 - ⚡ Built with Bun for maximum performance
+- 🔧 Type-safe validation with Zod
+- 📋 OpenAPI 3.1 specification
 
 ## Tech Stack
 
-- **Runtime**: [Bun](https://bun.sh)
-- **Framework**: [Hono](https://hono.dev)
-- **Validation**: [ArkType](https://arktype.io) via [@hono/arktype-validator](https://www.npmjs.com/package/@hono/arktype-validator)
-- **Rate Limiting**: [hono-rate-limiter](https://www.npmjs.com/package/hono-rate-limiter) with Redis
+- **Runtime**: [Bun](https://bun.sh) (v1.0+)
+- **Framework**: [Hono](https://hono.dev) with [@hono/zod-openapi](https://github.com/honojs/middleware/tree/main/packages/zod-openapi)
+- **API Documentation**: [@scalar/hono-api-reference](https://github.com/scalar/scalar/tree/main/packages/hono-api-reference)
+- **Validation**: [Zod](https://zod.dev) with [@hono/zod-openapi](https://github.com/honojs/middleware/tree/main/packages/zod-openapi)
+- **Rate Limiting**: [hono-rate-limiter](https://github.com/rhinobase/hono-rate-limiter) with [rate-limit-redis](https://github.com/wyattjoh/rate-limit-redis)
+- **Caching**: [Redis](https://redis.io) (v7.0+)
 - **HTML Parsing**: [JSDOM](https://github.com/jsdom/jsdom) + [Mozilla Readability](https://github.com/mozilla/readability)
 - **Markdown Conversion**: [Turndown](https://github.com/mixmark-io/turndown)
+- **Linting/Formatting**: [Biome](https://biomejs.dev)
 
 ## Prerequisites
 
@@ -55,21 +60,25 @@ REDIS_URL=redis://localhost:6379
 
 ## API Documentation
 
+### Interactive Documentation
+
+Visit `http://localhost:3000` to access the interactive API documentation powered by [Scalar](https://scalar.com). The documentation is auto-generated from OpenAPI 3.1 specifications.
+
 ### Endpoints
 
 #### `GET /`
-Returns the HTML documentation page.
+Returns the interactive API documentation page using Scalar.
 
 #### `GET /convert`
 Convert URL to Markdown.
 
 **Query Parameters:**
-- `url` (required): The URL to convert
-- `enableDetailedResponse` (optional): Return full page content instead of just article (default: `false`)
+- `url` (required): The URL to convert to Markdown (must be a valid HTTP/HTTPS URL)
+- `enableDetailedResponse` (optional): Return full page content instead of just article content (default: `false`)
 
 **Headers:**
-- `Accept: application/json` - Returns JSON array with markdown
-- `Accept: text/plain` - Returns plain text markdown
+- `Accept: application/json` - Returns JSON array with markdown content
+- `Accept: text/plain` - Returns plain text markdown (default)
 
 #### `GET /health`
 Health check endpoint that verifies Redis connection.
@@ -104,10 +113,11 @@ curl "http://localhost:3000/convert?url=https://example.com&enableDetailedRespon
 
 ## Rate Limiting
 
-- **Limit**: 5 requests per minute
-- **Scope**: Per IP address
+- **Limit**: 5 requests per minute per IP address
+- **Scope**: Per IP address (supports proxy headers: `CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP`)
 - **Headers**: Rate limit info included in response headers (`RateLimit-*`)
-- **Storage**: Redis
+- **Storage**: Redis with `rate-limit-redis`
+- **Standard**: [IETF Draft 7](https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/) compliant
 
 ## Building Standalone Executable
 
@@ -253,46 +263,119 @@ sudo certbot --nginx -d your-domain.com
 
 ## Development
 
+### Available Scripts
+
 ```bash
-# Run in development mode with hot reload
-bun run dev
+# Development
+bun run dev              # Run in development mode with hot reload
+bun run start            # Run production server (src/index.ts)
 
-# Build standalone executable
-bun run build
+# Building
+bun run build            # Build standalone executable with minification
 
-# Run the standalone executable
-./htmlmarkdowner
+# Code Quality
+bun run format           # Format code with Biome
+bun run format:check     # Check code formatting
+bun run lint             # Lint and fix code with Biome
+bun run lint:check       # Check linting without fixing
+bun run check            # Run both formatting and linting
+bun run check:ci         # CI-friendly check (no fixes)
+
+# Docker
+bun run docker:redis     # Start Redis container for development
+bun run docker:redis:down # Stop Redis container
+bun run docker:prod:build # Build production Docker image
+bun run docker:prod:up   # Start production stack
+bun run docker:prod:down # Stop production stack
+bun run docker:prod:logs # View production logs
 ```
+
+### Development Setup
+
+1. **Install dependencies**:
+   ```bash
+   bun install
+   ```
+
+2. **Start Redis** (choose one):
+   ```bash
+   # Option 1: Docker (recommended)
+   bun run docker:redis
+
+   # Option 2: Local Redis installation
+   redis-server
+   ```
+
+3. **Run development server**:
+   ```bash
+   bun run dev
+   ```
+
+4. **Access the application**:
+   - API: http://localhost:3000
+   - Documentation: http://localhost:3000
+   - Health Check: http://localhost:3000/health
+
+### Code Quality
+
+The project uses [Biome](https://biomejs.dev) for fast linting and formatting:
+
+- **Formatting**: Tab indentation, double quotes
+- **Linting**: Recommended rules enabled
+- **Import Organization**: Automatic import sorting
 
 ## Project Structure
 
 ```
 htmlmarkdowner/
 ├── src/
-│   └── index.ts           # Main application file
-├── Dockerfile             # Docker build configuration
-├── docker-compose.yml     # Multi-container setup
-├── .dockerignore         # Docker ignore rules
-├── package.json          # Dependencies
-├── tsconfig.json         # TypeScript configuration
-└── README.md            # This file
+│   ├── config/
+│   │   └── redis.ts           # Redis client configuration
+│   ├── lib/
+│   │   ├── markdown.ts        # HTML to Markdown conversion logic
+│   │   └── validation.ts      # Zod schemas and validation helpers
+│   ├── middleware/
+│   │   └── rate-limiter.ts    # Rate limiting middleware
+│   ├── routes/
+│   │   ├── convert.ts         # URL conversion endpoint
+│   │   ├── health.ts          # Health check endpoint
+│   │   └── index.ts           # Route mounting and OpenAPI setup
+│   └── index.ts               # Main application entry point
+├── Dockerfile                 # Multi-stage Docker build
+├── docker-compose.yml         # Development Redis setup
+├── docker-compose.prod.yml    # Production deployment
+├── biome.json                 # Linting and formatting configuration
+├── package.json               # Dependencies and scripts
+├── tsconfig.json              # TypeScript configuration
+└── README.md                  # This file
 ```
 
 ## How It Works
 
-1. **Request Validation**: ArkType validates incoming URL parameters
-2. **Rate Limiting**: Redis-backed rate limiter checks IP allowance
-3. **Fetch HTML**: Uses native `fetch` to get page content
-4. **Parse & Extract**: JSDOM + Readability extract main content
-5. **Convert**: Turndown converts HTML to clean Markdown
-6. **Return**: Sends markdown response to client
+1. **Request Validation**: Zod schemas validate and transform incoming URL parameters
+2. **Rate Limiting**: Redis-backed rate limiter checks IP-based request limits
+3. **Fetch HTML**: Uses native `fetch` with browser User-Agent to get page content
+4. **Parse & Extract**: JSDOM creates DOM, Readability extracts article content (or full body if detailed response requested)
+5. **Clean HTML**: Removes unwanted elements (scripts, styles, iframes, etc.)
+6. **Convert**: Turndown converts cleaned HTML to clean Markdown with ATX headings and fenced code blocks
+7. **Return**: Sends markdown response in requested format (JSON or plain text)
 
 ### Docker Build Process
 
-The multi-stage Dockerfile:
-1. **Builder Stage**: Uses `oven/bun:1` to compile the TypeScript source into a standalone executable with `bun build --compile`
-2. **Production Stage**: Uses minimal `debian:bookworm-slim` base (only ~78MB) and copies just the compiled binary
-3. **Result**: Production image is much smaller (~150MB vs ~500MB+) and has faster startup times
+The multi-stage Dockerfile optimizes for both build speed and runtime efficiency:
+
+1. **Builder Stage** (`oven/bun:1`):
+   - Installs all dependencies (including dev dependencies)
+   - Copies source code
+   - Builds standalone executable with `bun build --compile --minify --sourcemap --target bun`
+
+2. **Production Stage** (`debian:bookworm-slim`):
+   - Minimal base image (~78MB) with only essential runtime dependencies
+   - Installs `ca-certificates` for HTTPS requests
+   - Copies only the compiled binary (no source code or dependencies)
+   - Exposes port 3000 and sets production environment
+
+3. **Result**: Production image (~150MB) with fast startup times and no unnecessary dependencies
 
 ## Differences from Original Markdowner
 
@@ -300,7 +383,7 @@ The multi-stage Dockerfile:
 - ❌ **No Cloudflare Workers**: Runs on any Node.js/Bun environment
 - ❌ **No Twitter/X Support**: Focused on standard HTML pages
 - ✅ **Simpler Stack**: Easier to deploy and maintain
-- ✅ **Better Validation**: ArkType for type-safe validation
+- ✅ **Better Validation**: Zod for type-safe validation
 - ✅ **Docker Ready**: Easy deployment with Docker Compose
 - ✅ **Standalone Executable**: Single binary with all dependencies bundled
 
