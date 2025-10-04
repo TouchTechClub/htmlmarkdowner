@@ -328,6 +328,10 @@ PORT=3001
 redis-cli DEL "hrl:{IP_ADDRESS}"
 ```
 
+## Credits
+
+This project is an alternative implementation of [markdowner](https://github.com/supermemoryai/markdowner) by [supermemoryai](https://supermemory.ai). While the original markdowner uses Puppeteer for dynamic content rendering, htmlmarkdowner focuses on static/SSR pages with a simpler stack.
+
 ## License
 
 MIT
