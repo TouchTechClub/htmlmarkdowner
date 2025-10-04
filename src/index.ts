@@ -21,8 +21,11 @@ process.on("SIGTERM", async () => {
 });
 
 export default {
+	hostname: process.env.HOSTNAME || "0.0.0.0",
 	port: process.env.PORT || 3000,
 	fetch: app.fetch,
 };
 
-console.log(`🔥 Server running on port ${process.env.PORT || 3000}`);
+console.log(
+	`🔥 Server running on ${process.env.HOSTNAME || "0.0.0.0"}:${process.env.PORT || 3000}`,
+);
