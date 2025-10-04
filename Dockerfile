@@ -27,8 +27,9 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy the compiled executable from builder
+# Copy the compiled executable and node_modules from builder
 COPY --from=builder /app/htmlmarkdowner /app/htmlmarkdowner
+COPY --from=builder /app/node_modules /app/node_modules
 
 # Expose the port
 EXPOSE 3000
