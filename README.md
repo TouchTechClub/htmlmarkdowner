@@ -165,8 +165,11 @@ The services will be available at:
 For production, use the production compose file that runs both Redis and the app:
 
 ```bash
-# Build and start all services
+# Build and start all services (API available on port 3000 by default)
 bun run docker:prod:up
+
+# Or set custom host port
+HOST_PORT=8080 bun run docker:prod:up
 
 # View logs
 bun run docker:prod:logs
@@ -179,8 +182,11 @@ docker-compose -f docker-compose.prod.yml down -v
 ```
 
 The services will be available at:
-- API: http://localhost:3000 (running via Docker)
+- API: http://localhost:${HOST_PORT:-3000} (running via Docker)
 - Redis: localhost:6379 (running via Docker)
+
+**Environment Variables:**
+- `HOST_PORT`: Host port for the API (default: 3000)
 
 ### Using Docker Only
 
@@ -191,10 +197,17 @@ docker run -d --name redis -p 6379:6379 redis:7-alpine
 # Build the app
 docker build -t htmlmarkdowner .
 
-# Run the app
+# Run the app (default port 3000)
 docker run -d \
   --name htmlmarkdowner \
   -p 3000:3000 \
+  -e REDIS_URL=redis://host.docker.internal:6379 \
+  htmlmarkdowner
+
+# Or run on custom port
+docker run -d \
+  --name htmlmarkdowner \
+  -p 8080:3000 \
   -e REDIS_URL=redis://host.docker.internal:6379 \
   htmlmarkdowner
 ```
@@ -219,9 +232,9 @@ sudo apt install docker-compose-plugin
 git clone <your-repo-url>
 cd htmlmarkdowner
 
-# Optional: Create .env file for custom configuration
-echo "PORT=3000" > .env
-echo "REDIS_URL=redis://redis:6379" >> .env
+# Optional: Set environment variables for custom configuration
+export HOST_PORT=8080  # Custom host port (default: 3000)
+# PORT=3000 and REDIS_URL are set in docker-compose.prod.yml
 ```
 
 3. **Deploy**:
@@ -234,31 +247,6 @@ sudo docker-compose -f docker-compose.prod.yml ps
 
 # View logs
 sudo docker-compose -f docker-compose.prod.yml logs -f app
-```
-
-4. **Set up reverse proxy** (optional, using Nginx):
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-5. **Enable SSL** with Let's Encrypt:
-```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d your-domain.com
 ```
 
 ## Development
